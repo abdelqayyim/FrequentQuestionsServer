@@ -1,0 +1,27 @@
+{
+  "name": "frequentquestions",
+  "version": "1.0.0",
+  "description": "Deploying the API",
+  "main": "../Server/server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abdelqayyim/FrequentQuestions.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/abdelqayyim/FrequentQuestions/issues"
+  },
+  "homepage": "https://github.com/abdelqayyim/FrequentQuestions#readme",
+  "dependencies": {
+    "body-parser": "^1.20.0",
+    "express": "^4.17.3",
+    "i": "^0.3.7",
+    "mongodb": "^4.5.0",
+    "mongoose": "^6.3.0"
+  }
+}
