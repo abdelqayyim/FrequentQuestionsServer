@@ -16,31 +16,6 @@ router.get("/", (req,res) => {
         return;
     })
 })
-router.post("/:language/getNote", (req, res) => {//in the body pass in the note's title, return the note
-    console.log(req.body);
-    if (!Object.keys(req.body).includes("title")) {
-        res.status(400).send(`You need to pass in the title of the note you want to GET`);
-        return;
-    }
-    let lang = req.params.language;
-    let wantedNote = req.body.title;
-    
-    Language.findOne({ name: lang }, function (error, result) {
-        if (error) { res.send(error.message); return; }
-        if (result == null) {
-            res.status(400).send(`The language: ${lang} does not exist`);
-            return;
-        }
-        for (note of result.notes) {
-            if (note.title == wantedNote) {
-                res.status(200).send(note);
-                return;
-            }
-        }
-        res.status(404).send(`The note with title: ${req.body.title} does not exist`);
-        return;
-    })
-})
 router.get("/:language/getNotes", (req, res) => {//get the list of notes for a language
     let lang = req.params.language;
     Language.findOne({ name: lang }, function (error, result) {
@@ -73,6 +48,31 @@ router.post("/:language", (req, res) => {
 			console.log("----------------  NEW LANGUAGE ADDED --------------------");
 			return;
 		})
+    })
+})
+router.post("/:language/getNote", (req, res) => {//in the body pass in the note's title, return the note
+    console.log(req.body);
+    if (!Object.keys(req.body).includes("title")) {
+        res.status(400).send(`You need to pass in the title of the note you want to GET`);
+        return;
+    }
+    let lang = req.params.language;
+    let wantedNote = req.body.title;
+    
+    Language.findOne({ name: lang }, function (error, result) {
+        if (error) { res.send(error.message); return; }
+        if (result == null) {
+            res.status(400).send(`The language: ${lang} does not exist`);
+            return;
+        }
+        for (note of result.notes) {
+            if (note.title == wantedNote) {
+                res.status(200).send(note);
+                return;
+            }
+        }
+        res.status(404).send(`The note with title: ${req.body.title} does not exist`);
+        return;
     })
 })
 router.post("/:language/newNote",checkNoteBody, (req, res) => { //initial creation of a note
@@ -150,7 +150,7 @@ router.put("/:language/updateNote", checkNoteBody, (req, res) => {
                 return;
             }
         }
-        res.status(404).send(`The note with title: ${req.body.title} does not exist`);
+        res.status(400).send(`The note with title: ${req.body.title} does not exist`);
         return;
     })
 })
