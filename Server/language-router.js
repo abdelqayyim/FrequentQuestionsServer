@@ -112,12 +112,20 @@ function checkNoteBody(req, res, next) {
     let permittedKeys = ["title", "description", "noteDetail", "_id"];
     let passedKeys = Object.keys(req.body);
 
-    for (key of passedKeys) {
-        if (!permittedKeys.includes(key) || !passedKeys.includes("title") ||!passedKeys.includes("description") ||!passedKeys.includes("noteDetail") ||!passedKeys.includes("_id")) {
-            res.status(404).send(`There is an error in the body, it should be in the format {title: String, description: String, noteDetail:String}`);
-            return;
-        }
+    
+    if (!passedKeys.includes("title")) {
+        res.status(404).send(`There is an error in the body, missing {title: String}`)
     }
+    else if (!passedKeys.includes("description")) {
+        res.status(404).send(`There is an error in the body, missing {description: String}`)
+    }
+    else if (!passedKeys.includes("noteDetail")) {
+        res.status(404).send(`There is an error in the body, missing {noteDetail: String}`)
+    }
+    else if (!passedKeys.includes("_id")) {
+        res.status(404).send(`There is an error in the body, missing {_id: String}`)
+    }
+
     next();
 }
 router.put("/:language/updateNote", checkNoteBody, (req, res) => {
@@ -127,6 +135,7 @@ router.put("/:language/updateNote", checkNoteBody, (req, res) => {
     let newDescription = req.body.description;
     let newNoteDetail = req.body.noteDetail;
     let newNoteId = req.body._id;
+    let newLanguage = req.body.language
     Language.findOne({ name: lang }, function(error,result){
         if (error) { res.status(404).send(error.message); return; }
         if (result == null) {
@@ -138,12 +147,18 @@ router.put("/:language/updateNote", checkNoteBody, (req, res) => {
                 note.title = newTitle;
                 note.description = newDescription;
                 note.noteDetail = newNoteDetail;
+                note.language = newLanguage
+
+                console.log(note.language)
 
                 result.save(function (er, resu) {
                     if (er) {
                         res.status(400).send(er.message);
                         return;
-                    } 
+                    }
+                    
+                    console.log(note.language)
+                    console.log(resu)
                     res.status(200).send(resu);
                     return;
                 })

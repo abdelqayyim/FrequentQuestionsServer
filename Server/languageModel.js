@@ -11,7 +11,8 @@ let languageSchema = Schema({
             id:Number,
             title: { type: String },
             description: { type: String },
-            noteDetail: { type: String }
+            noteDetail: { type: String },
+            language: {type: String}
         },
     }]
 })
