@@ -13,6 +13,7 @@ router.get("/", (req,res) => {
         if (error) { res.send(error.message); return; }
         res.status(200).send(result);
         console.log("----------------  SENDING BACK ALL THE LANGUAGES --------------------");
+        console.log(result)
         return;
     })
 })

@@ -1,3 +1,5 @@
+const { string } = require("i/lib/util");
+const { OrderedBulkOperation } = require("mongodb");
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
@@ -11,7 +13,11 @@ let languageSchema = Schema({
             id:Number,
             title: { type: String },
             description: { type: String },
-            noteDetail: { type: String },
+            // noteDetail: { type: String },
+            noteDetail: [
+                { type: Object }
+            ]
+            ,
             language: {type: String}
         },
     }]
