@@ -20,11 +20,13 @@ app.locals.db = db;
 // app.use(cors({
 //   origin: 'http://localhost:8000'
 // }))
-// app.use(
-//   cors({
-//     origin: '*' //everywhere
-//   })
-// );
+app.use(
+  cors({
+    origin: '*', //everywhere
+    methods: "*",
+    credentials: true
+  })
+);
 // fixing "413 Request Entity Too Large" errors
 app.use(express.json({limit: "10mb", extended: true}))
 app.use(express.urlencoded({limit: "10mb", extended: true, parameterLimit: 50000}))
