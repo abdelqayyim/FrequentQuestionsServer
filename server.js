@@ -41,7 +41,7 @@ app.use((req,_,next)=> {
 app.use(bodyParser.urlencoded({extended: true}));
 
 app.use(bodyParser.json());
-app.use(cors());
+// app.use(cors());
 // app.use(express.bodyParser({limit: 52428800}))
 
 app.use(function (req, res, next) {
