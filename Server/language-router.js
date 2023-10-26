@@ -5,9 +5,15 @@ const path = require('path');
 const app = express();
 let router = express.Router();
 let Language = require("./languageModel");
+const { ObjectId } = require('mongodb');
+const { default: mongoose } = require('mongoose');
 
+//URL/languaguages/
 app.use(express.json()); // body-parser middleware
 
+mongoose.set('debug', true);
+
+//ex: http://localhost:8000/languages/
 router.get("/", (req,res) => {
     Language.find({}, function (error, result) {
         if (error) { res.send(error.message); return; }
@@ -18,18 +24,21 @@ router.get("/", (req,res) => {
         return;
     })
 })
-router.get("/:language/getNotes", (req, res) => {//get the list of notes for a language
-    let lang = req.params.language;
-    Language.findOne({ name: lang }, function (error, result) {
+
+// ex: http://localhost:8000/languages/6539adb333c191969ffb9b40/getNotes
+router.get("/:language_id/getNotes", (req, res) => {//get the list of notes for a language
+    let id = mongoose.Types.ObjectId(req.params.language_id);
+    Language.findById(id, function (error, result){
         if (error) { res.send(error.message); return; }
         if (result == null) {
-            res.status(400).send(`The language: ${lang} does not exist`);
+            res.status(400).send(`The languages does not exist in the database`);
             return;
         }
         res.status(200).send(result.notes);
         return;
     })
 })
+// ex: http://localhost:8000/languages/java
 router.post("/:language", (req, res) => {
     let newLanguage = req.params.language;
     Language.findOne({ name: newLanguage }, function (err, result) {
@@ -52,19 +61,19 @@ router.post("/:language", (req, res) => {
 		})
     })
 })
-router.post("/:language/getNote", (req, res) => {//in the body pass in the note's title, return the note
-    console.log(req.body);
+
+router.post("/:language_id/getNote", (req, res) => {//in the body pass in the note's title, return the note
+    let id = mongoose.Types.ObjectId(req.params.language_id);
     if (!Object.keys(req.body).includes("title")) {
         res.status(400).send(`You need to pass in the title of the note you want to GET`);
         return;
     }
-    let lang = req.params.language;
     let wantedNote = req.body.title;
     
-    Language.findOne({ name: lang }, function (error, result) {
+    Language.findById(id, function (error, result) {
         if (error) { res.send(error.message); return; }
         if (result == null) {
-            res.status(400).send(`The language: ${lang} does not exist`);
+            res.status(400).send(`The language does not exist`);
             return;
         }
         for (note of result.notes) {
@@ -77,15 +86,26 @@ router.post("/:language/getNote", (req, res) => {//in the body pass in the note'
         return;
     })
 })
-router.post("/:language/newNote",checkNoteBody, (req, res) => { //initial creation of a note
+
+//ex: http://localhost:8000/languages/6539d97906d6b98deb7b719c/newNote
+// body:
+// {
+//     "title": "Yessir",
+//     "description": "This is the description",
+//     "noteDetail": "Blah Blah Blah",
+//     "_id": "6539d97906d6b98deb7b719c"
+// }
+// Headers:
+// content-type: application/json
+router.post("/:language_id/newNote",checkNoteBody, (req, res) => { //initial creation of a note
     //TASK: check the note body input
-    let lang = req.params.language;
     let newTitle = req.body.title;
     let newDescription = req.body.description;
     let newDetail = req.body.noteDetail;
     let existingTitles = []
+    let id = mongoose.Types.ObjectId(req.params.language_id);
 
-    Language.findOne({ name: lang }, function(error, result){
+    Language.findById(id, function(error, result){
         if (error) { res.status(404).send(error.message); } //TASK: check to see if the title does not already exist
         
         for (note of result.notes) {
@@ -109,8 +129,6 @@ router.post("/:language/newNote",checkNoteBody, (req, res) => { //initial creati
     })
 })
 function checkNoteBody(req, res, next) {
-    let lang = req.params.language;
-    console.log(`The passed in language is ${lang}`);
     let permittedKeys = ["title", "description", "noteDetail", "_id"];
     let passedKeys = Object.keys(req.body);
 
@@ -130,18 +148,28 @@ function checkNoteBody(req, res, next) {
 
     next();
 }
-router.put("/:language/updateNote", checkNoteBody, (req, res) => {
+//ex: http://localhost:8000/languages/6539d97906d6b98deb7b719c/updateNote
+// body:
+// {
+//     "title": "Yessir",
+//     "description": "This is the description",
+//     "noteDetail": "Blah Blah Blah",
+//     "_id": "6539d97906d6b98deb7b719c"
+// }
+// Headers:
+// content-type: application/json
+router.put("/:language_id/updateNote", checkNoteBody, (req, res) => {
     //At this point the body is validated
-    let lang = req.params.language;
+    let id = mongoose.Types.ObjectId(req.params.language_id);
     let newTitle = req.body.title;
     let newDescription = req.body.description;
     let newNoteDetail = req.body.noteDetail;
     let newNoteId = req.body._id;
     let newLanguage = req.body.language
-    Language.findOne({ name: lang }, function(error,result){
+    Language.findById(id, function(error,result){
         if (error) { res.status(404).send(error.message); return; }
         if (result == null) {
-            res.status(400).send(`There is not language: ${lang} in the database`);
+            res.status(400).send(`This language does not exist in the database`);
             return;
         }
         for (note of result.notes) {
@@ -171,39 +199,49 @@ router.put("/:language/updateNote", checkNoteBody, (req, res) => {
         return;
     })
 })
-router.delete("/:language", (req,res) => {//Delete the entire language
-    let lang = req.params.language;
-    Language.deleteOne({ name: lang }, function (error, result) {
+//ex: http://localhost:8000/languages/6539d97906d6b98deb7b719c
+// Headers:
+// content-type: application/json
+router.delete("/:language_id", (req,res) => {//Delete the entire language
+    let id = mongoose.Types.ObjectId(req.params.language_id);
+    Language.deleteOne({ _id: id }, function (error, result) {
         if (error) { res.send(error.message); return; }
         if (result.deletedCount == 1) {
-            res.status(200).send(`Successfully deleted ${lang} notes`);
+            res.status(200).send(`Successfully deleted notes`);
             return;
         }
         else {
-            res.status(400).send(`The language ${lang} does not Exists`);
+            res.status(400).send(`The language does not Exists`);
             return;
         }
     })
 })
-router.delete("/:language/deleteNote", (req, res) => {
-    let lang = req.params.language;
+//ex: http://localhost:8000/languages/6539d97906d6b98deb7b719c/deleteNote
+// body:
+// {
+//     "_id": "6539d97906d6b98deb7b719c"
+// }
+// Headers:
+// content-type: application/json
+router.delete("/:language_id/deleteNote", (req, res) => {
+    let id = mongoose.Types.ObjectId(req.params.language_id);
+    let newNoteId = req.body._id;
     if (!Object.keys(req.body).includes("title")) {
         res.status(400).send(`The body need to containt the title of the note to be deleted`);
         return;
     }
-    let titleToDelete = req.body.title;
-    Language.findOne({ name: lang }, function (error, result) {
+    Language.findById(id, function (error, result) {
         if (error) { res.status(404).send(error.message); return; }
         if (result == null) {
-            res.status(400).send(`The language: ${lang} does not exist`);
+            res.status(400).send(`The language does not exist`);
             return;
         }
-        let titles = [];
+        let ids = [];
         for (note of result.notes) {
-            titles.push(note.title);
+            ids.push(note._id);
         }
-        console.log(`The index of the note is ${titles.indexOf(titleToDelete)}`);
-        result.notes.splice(titles.indexOf(titleToDelete),1);
+        console.log(`The index of the note is ${ids.indexOf(id)}`);
+        result.notes.splice(ids.indexOf(id),1);
         result.save(function (er, resu) {
             if (er) {
                 res.status(400).send(er.message);
