@@ -1,2 +1,3 @@
 npm start to start server or nodemon start to start
 http://localhost:8000/languages/ is where it starts
+app is deployed on clylic
