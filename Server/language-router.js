@@ -18,9 +18,6 @@ router.get("/", (req,res) => {
     Language.find({}, function (error, result) {
         if (error) { res.send(error.message); return; }
         res.status(200).send(result);
-        console.log("----------------  SENDING BACK ALL THE LANGUAGES --------------------");
-        console.log("Should display the results")
-        console.log(result)
         return;
     })
 })
@@ -46,7 +43,6 @@ router.post("/:language", (req, res) => {
         if (result != null) {
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.status(404).send(`${newLanguage} Already Exists in the database`);
-            console.log("IT ALREADY EXISTS");
             return
         } //if the language is already in the database
         //If it does not exists add it
@@ -56,7 +52,6 @@ router.post("/:language", (req, res) => {
 				return;
 			}
 			res.status(200).send(resu);
-			console.log("----------------  NEW LANGUAGE ADDED --------------------");
 			return;
 		})
     })
@@ -123,7 +118,6 @@ router.post("/:language_id/newNote",checkNoteBody, (req, res) => { //initial cre
                 return;
             }
             res.status(200).send(resu);
-            console.log(`----------------  NEW NOTE ADDED TO ${lang.toUpperCase()} --------------------`);
             return;
         })
     })
@@ -177,18 +171,13 @@ router.put("/:language_id/updateNote", checkNoteBody, (req, res) => {
                 note.title = newTitle;
                 note.description = newDescription;
                 note.noteDetail = newNoteDetail;
-                note.language = newLanguage
-
-                console.log(note.language)
+                note.language = newLanguage;
 
                 result.save(function (er, resu) {
                     if (er) {
                         res.status(400).send(er.message);
                         return;
                     }
-                    
-                    console.log(note.language)
-                    console.log(resu)
                     res.status(200).send(resu);
                     return;
                 })
@@ -226,6 +215,9 @@ router.delete("/:language_id", (req,res) => {//Delete the entire language
 router.delete("/:language_id/deleteNote", (req, res) => {
     let id = mongoose.Types.ObjectId(req.params.language_id);
     let newNoteId = req.body._id;
+
+    console.log(`The note ID is: ${newNoteId}`);
+
     if (!Object.keys(req.body).includes("title")) {
         res.status(400).send(`The body need to containt the title of the note to be deleted`);
         return;
@@ -240,8 +232,13 @@ router.delete("/:language_id/deleteNote", (req, res) => {
         for (note of result.notes) {
             ids.push(note._id);
         }
-        console.log(`The index of the note is ${ids.indexOf(id)}`);
-        result.notes.splice(ids.indexOf(id),1);
+
+        result.notes = result.notes.filter((note) => {
+            console.log(`${note._id} == ${newNoteId} ->${note._id != newNoteId}`);
+            if (note._id != newNoteId) {
+                return note;
+            }
+        });
         result.save(function (er, resu) {
             if (er) {
                 res.status(400).send(er.message);
