@@ -23,7 +23,7 @@ app.use(
   cors({
     origin: '*', //allow requests from everywhere
     methods: "*",
-    credentials: true
+    // credentials: true
   })
 );
 
