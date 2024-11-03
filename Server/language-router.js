@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const app = express();
 let router = express.Router();
-let Language = require("./languageModel");
+let {Language} = require("./languageModel");
 const { ObjectId } = require('mongodb');
 const { default: mongoose } = require('mongoose');
 
@@ -81,15 +81,29 @@ router.get("/getLanguage", validateObjectId, async (req, res) => {
 // ex: http://localhost:8000/languages/java
 // Route to create a new language
 router.post("/:language_name", async (req, res) => {
-    const newLanguage = req.params.language_name;
+    const newLanguageName = req.params.language_name;
+
+    // Destructure the logo and notes from the request body
+    const { logo, notes } = req.body; // Assuming the body contains logo and notes
 
     try {
-        const existingLanguage = await Language.findOne({ name: newLanguage });
+        // Check if the language already exists
+        const existingLanguage = await Language.findOne({ name: newLanguageName });
         if (existingLanguage) {
-            return res.status(400).json({ error: `${newLanguage} already exists in the database` });
+            return res.status(400).json({ error: `${newLanguageName} already exists in the database` });
         }
 
-        const language = await Language.create({ name: newLanguage });
+        // Create the new language object
+        const languageData = {
+            name: newLanguageName,
+            logo: logo || null, // Set logo to null if not provided
+            notes: notes || [] // Set notes to an empty array if not provided
+        };
+
+        // Create a new language document in the database
+        const language = await Language.create(languageData);
+
+        // Return the created language document
         res.status(201).json(language);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -123,49 +137,64 @@ router.get("/getNote/:note_id", validateObjectId, async (req, res) => {
 // Route to create a new note
 // ex: http://localhost:8000/languages/newNote
 // body:
-// {
-//     "language_id": "6539d97906d6b98deb7b719c",
-//     "title": "Yessir",
-//     "description": "This is the description",
-//     "note_detail": "Blah Blah Blah"
+// {"language_id": "6726ef27cc54e34c80ecebf2",
+// "title": "New Note",
+// "description": "Decription for new note",
+// "note_detail": [{"type": "text", "language":"javascript", "content":"console.log(hello)"}]
 // }
 // Headers:
 // content-type: application/json
 router.post("/notes/newNote", validateObjectId, async (req, res) => {
     const { language_id, title, description, note_detail } = req.body;
 
-    if (!language_id || !title || !description || !note_detail) {
-        return res.status(400).json({ error: 'Missing required fields in the body' });
+    // Validate required fields
+    if (!language_id || !title || !description || !note_detail || !Array.isArray(note_detail)) {
+        return res.status(400).json({ error: 'Missing or invalid required fields in the body' });
     }
 
     try {
         const language = await Language.findById(language_id);
-        console.log(`language`, language);
         if (!language) {
             return res.status(404).json({ error: 'Language not found' });
         }
 
+        // Check if a note with the same title already exists
         const existingNote = language.notes.find(note => note.title === title);
         if (existingNote) {
             return res.status(400).json({ error: `Note with title "${title}" already exists` });
         }
 
-        language.notes.push({ title, description, note_detail });
+        // Construct new note according to the updated schema
+        const newNote = {
+            title,
+            description,
+            noteDetail: note_detail.map(detail => ({
+                type: detail.type,
+                language: detail.language || null, // Set to null if not provided
+                content: detail.content,
+            })),
+            last_edited: new Date() // Set to current date
+        };
+
+        // Push the new note into the language's notes array
+        language.notes.push(newNote);
+        
+        // Save the updated language document
         const updatedLanguage = await language.save();
-        return res.status(201).json(updatedLanguage); // Use 'return' to prevent further code execution
+
+        return res.status(201).json(updatedLanguage); // Return updated document
     } catch (error) {
-        return res.status(500).json({ error: error.message }); // Ensure a single response is sent
+        return res.status(500).json({ error: error.message });
     }
 });
 
 //ex: http://localhost:8000/languages/notes/updateNote
 // body:
-// {
-//     "title": "Yessir",
-//     "description": "This is the description",
-//     "note_detail": "Blah Blah Blah",
-//     "language_id": "6539d97906d6b98deb7b719c",
-//      "note_id": "dfgdsfgsdfg"
+// {"language_id": "6726ef27cc54e34c80ecebf2",
+//     "title": "New Note",
+//     "description": "Decription for new note",
+//     "note_detail": [{"type": "text", "language":"javascript", "content":"console.log(hellooooo)"}],
+//     "note_id": "6726f3c7b7bba9e40ab3467b"
 // }
 // Headers:
 // content-type: application/json
@@ -173,27 +202,41 @@ router.post("/notes/newNote", validateObjectId, async (req, res) => {
 router.put("/notes/updateNote", validateObjectId, async (req, res) => {
     const { language_id, title, description, note_detail, note_id } = req.body;
 
+    // Ensure required fields are provided
     if (!language_id || !note_id) {
-        return res.status(400).json({ error: 'Missing required fields: language_id and _id are required.' });
+        return res.status(400).json({ error: 'Missing required fields: language_id and note_id are required.' });
     }
 
     try {
+        // Find the language document by its ID
         const language = await Language.findById(language_id);
         if (!language) {
             return res.status(404).json({ error: 'Language not found' });
         }
 
+        // Find the specific note by its ID within the language document
         const note = language.notes.id(note_id);
         if (!note) {
             return res.status(404).json({ error: `Note with ID "${note_id}" not found` });
         }
 
-        note.title = title;
-        note.description = description;
-        note.noteDetail = note_detail;
+        // Update note fields if provided
+        if (title) note.title = title;
+        if (description) note.description = description;
 
+        // Map note_detail if provided, ensuring correct schema structure
+        if (Array.isArray(note_detail)) {
+            note.noteDetail = note_detail.map(detail => ({
+                type: detail.type,
+                language: detail.language || null, // Set to null if not provided
+                content: detail.content,
+            }));
+        }
+
+        // Save the updated language document
         const updatedLanguage = await language.save();
-        res.status(200).json(updatedLanguage);
+
+        res.status(200).json(updatedLanguage); // Return the updated document
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
