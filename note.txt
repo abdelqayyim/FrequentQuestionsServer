@@ -1,0 +1,8 @@
+npm start to start server or nodemon start to start
+http://localhost:8000/languages/ is where it starts for development 
+
+For Deployment
+1 - Create a .env file in your project root (make sure to add .env to your 
+    .gitignore file to keep sensitive data out of version control):
+    -  Put the sensitive data in there
+2 - npm install dotenv and require it 
