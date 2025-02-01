@@ -7,10 +7,10 @@ const { generateAccessToken, generateRefreshToken } = require('./tokenUtils'); /
 
 // Route to create a new user
 router.post('/register', async (req, res) => {
-  const { username, email, password, firstName, lastName, userId } = req.body;
+  const { username, email, password, firstName, lastName, userId, profilePicture } = req.body;
 
   // Basic validation
-  if (!username || !email || !password || !firstName || !lastName) {
+  if (!username || !email || !firstName || !lastName) {
     return res.status(400).json({ message: 'firstName, lastName, Username, email, and password are required.' });
   }
 
@@ -22,10 +22,20 @@ router.post('/register', async (req, res) => {
     }
 
     // Hash the password before saving it to the database
-      const hashedPassword = await bcrypt.hash(password, 10); // 10 rounds of hashing
+      let hashedPassword;
+      if (password) {
+        hashedPassword = await bcrypt.hash(password, 10); // 10 rounds of hashing
+      }
       
-      // In case the userID is already passed in (e.x. log in with google)
-      let newID = userId ? userId : 'custom-id-' + Math.random().toString(36).substring(2, 15);
+       // Generate a new userId if not passed or if invalid
+    let newID = userId ? userId : 'custom-id-' + Math.random().toString(36).substring(2, 15);
+
+    // Ensure userId is unique and valid (check if this userId already exists)
+    const existingUserId = await User.findOne({ userId: newID });
+    if (existingUserId) {
+      // If the generated userId already exists, generate a new one
+      newID = 'custom-id-' + Math.random().toString(36).substring(2, 15);
+    }
 
     // Create a new user object
     const newUser = new User({
@@ -33,8 +43,9 @@ router.post('/register', async (req, res) => {
         lastName,
         username,
         email,
-        password: hashedPassword, // Store the hashed password
-        userId: newID, // Generate a random user_id (for testing)
+        ...(hashedPassword != null && { password: hashedPassword }), // Store the hashed password
+        userId: newID, // Generate a random userId (for testing)
+        profilePicture
     });
 
     // Save the new user to the database
@@ -48,12 +59,13 @@ router.post('/register', async (req, res) => {
     res.status(201).json({
         message: 'User created successfully',
         user: {
-          id: newUser._id,
+            userId: newUser.userId,
           username: newUser.username,
           email: newUser.email,
           firstName: newUser.firstName,
           lastName: newUser.lastName,
-          isAdmin: newUser.isAdmin,  // Include admin role if necessary
+            isAdmin: newUser.isAdmin,  // Include admin role if necessary
+            profilePicture: newUser.profilePicture
         },
         tokens: {
           accessToken,
@@ -65,7 +77,50 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ message: 'Error creating user. Please try again later.', details : error });
   }
 });
+router.post('/checkUser', async (req, res) => {
+    const { userId } = req.body;
 
+    // Validate input
+    if (!userId) {
+        return res.status(400).json({ message: 'userId is required.' });
+    }
+
+    try {
+        // Check if user exists
+        const user = await User.findOne({ userId });
+
+        if (user) {
+            // Generate tokens (access and optionally refresh token)
+            const accessToken = generateAccessToken(user);
+            const refreshToken = generateRefreshToken(user); // Optional
+
+            return res.status(200).json({
+                exists: true,
+                message: 'User exists.',
+                user: {
+                    userId: user.userId,
+                    username: user.username,
+                    email: user.email,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    isAdmin: user.isAdmin, // Include admin role if necessary
+                    profilePicture: user.profilePicture
+                },
+                tokens: {
+                    accessToken,
+                    refreshToken, // Include refreshToken only if you're using it
+                }
+            });
+        } else {
+            return res.status(200).json({ exists: false, message: 'User not found.' });
+        }
+    } catch (error) {
+        console.error('Error checking user:', error);
+        res.status(500).json({ message: 'Internal server error.', details: error });
+    }
+});
+
+  
 // Secret key for JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret'; // Make sure to use a real secret key
 
@@ -75,16 +130,16 @@ router.post('/login/username-password', async (req, res) => {
 
     // "email": "testghging@gmail.com",
     // "password": "testingpassword"
-    const { email, password } = req.body;
+    const { username, password } = req.body;
   
     // Basic validation
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required.' });
+    if (!username || !password) {
+      return res.status(400).json({ message: 'username and password are required.' });
     }
   
     try {
       // Check if the user exists
-      const user = await User.findOne({ email });
+      const user = await User.findOne({ username });
       if (!user) {
         return res.status(404).json({ message: 'User not found.' });
       }
@@ -100,73 +155,27 @@ router.post('/login/username-password', async (req, res) => {
         const accessToken = generateAccessToken(user);
         const refreshToken = generateRefreshToken(user);
 
-    //   const token = jwt.sign(
-    //     { userId: user._id, username: user.username },
-    //     JWT_SECRET,
-    //     { expiresIn: '1h' } // Token will expire in 1 hour
-    //   );
-  
-      // Send success response with the token
-    //   res.status(200).json({
-    //     message: 'Login successful',
-    //       token: {accessToken: accessToken, refreshToken: refreshToken},
-    //     user: {
-    //       id: user._id,
-    //       username: user.username,
-    //         email: user.email,
-    //         firstName: user.firstName,
-    //       lastName: user.lastName
-    //     }
-        //   });
-        // Send the new tokens
-    res.json({
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-      });
+        res.json({
+            user: {
+                userId: user.userId,
+                username: user.username,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                isAdmin: user.isAdmin, // Include admin role if necessary
+                profilePicture: user.profilePicture
+            },
+            tokens: {
+                accessToken,
+                refreshToken, // Include refreshToken only if you're using it
+            }
+        });
     } catch (error) {
       console.error('Error during login:', error);
       res.status(500).json({ message: 'Error during login. Please try again later.', details: error });
     }
   });
   
-  // Route to sign in with Google login (assuming Google login passes a googleId)
-  router.post('/login/google', async (req, res) => {
-    const { googleId } = req.body;
-  
-    if (!googleId) {
-      return res.status(400).json({ message: 'Google ID is required.' });
-    }
-  
-    try {
-      // Check if a user with the provided googleId exists
-      const user = await User.findOne({ user_id: googleId });
-      if (!user) {
-        return res.status(404).json({ message: 'User not found with this Google ID.' });
-      }
-  
-      // Generate a JWT token (you can store this token client-side)
-      const token = jwt.sign(
-        { userId: user._id, username: user.username },
-        JWT_SECRET,
-        { expiresIn: '1h' } // Token will expire in 1 hour
-      );
-  
-      // Send success response with the token
-      res.status(200).json({
-        message: 'Google login successful',
-        token,
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email
-        }
-      });
-    } catch (error) {
-      console.error('Error during Google login:', error);
-      res.status(500).json({ message: 'Error during Google login. Please try again later.', details: error });
-    }
-  });
-
   // Route to refresh the access token using the refresh token
 router.post('/refresh-token', async (req, res) => {
     const { refreshToken } = req.body;

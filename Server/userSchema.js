@@ -11,7 +11,8 @@ const userSchema = new mongoose.Schema({
     userId: { type: String, unique: true }, // Google ID or custom user ID
     languages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Language' }], // Reference to languages
     createdAt: { type: Date, default: Date.now },
-    isAdmin: { type: Boolean, default: false }
+    isAdmin: { type: Boolean, default: false },
+    profilePicture: { type: String, default: null}
 });
 
 // Hash the password before saving

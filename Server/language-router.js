@@ -105,31 +105,59 @@ router.get("/details", async (req, res) => {
 
 // ex: http://localhost:8000/languages/java
 // Route to create a new language
-router.post("/:language_name", async (req, res) => {
-    const newLanguageName = req.params.language_name;
+// router.post("/:language_name", async (req, res) => {
+//     const newLanguageName = req.params.language_name;
 
-    // Destructure the logo and notes from the request body
-    const { logo, notes } = req.body; // Assuming the body contains logo and notes
+//     // Destructure the logo and notes from the request body
+//     const { logo, notes } = req.body; // Assuming the body contains logo and notes
+
+//     try {
+//         // Check if the language already exists
+//         const existingLanguage = await Language.findOne({ name: newLanguageName });
+//         if (existingLanguage) {
+//             return res.status(400).json({ error: `${newLanguageName} already exists in the database` });
+//         }
+
+//         // Create the new language object
+//         const languageData = {
+//             name: newLanguageName,
+//             logo: logo || null, // Set logo to null if not provided
+//             notes: notes || [] // Set notes to an empty array if not provided
+//         };
+
+//         // Create a new language document in the database
+//         const language = await Language.create(languageData);
+
+//         // Return the created language document
+//         res.status(201).json(language);
+//     } catch (error) {
+//         res.status(500).json({ error: error.message });
+//     }
+// });
+router.post("/addNewCourse", async (req, res) => {
+    const { name: title } = req.body; // Extract title from the request body
+
+    if (!title) {
+        return res.status(400).json({ error: "Course title is required." });
+    }
 
     try {
-        // Check if the language already exists
-        const existingLanguage = await Language.findOne({ name: newLanguageName });
-        if (existingLanguage) {
-            return res.status(400).json({ error: `${newLanguageName} already exists in the database` });
+        // Check if the course already exists
+        const existingCourse = await Language.findOne({ name: title });
+        if (existingCourse) {
+            return res.status(400).json({ error: `Course '${title}' already exists.` });
         }
 
-        // Create the new language object
-        const languageData = {
-            name: newLanguageName,
-            logo: logo || null, // Set logo to null if not provided
-            notes: notes || [] // Set notes to an empty array if not provided
+        // Create the new course object
+        const courseData = {
+            name: title,
         };
 
-        // Create a new language document in the database
-        const language = await Language.create(languageData);
+        // Create a new course in the database
+        const course = await Language.create(courseData);
 
-        // Return the created language document
-        res.status(201).json(language);
+        // Return the created course document
+        res.status(201).json(course);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -219,6 +247,8 @@ router.get('/note/by-name', async (req, res) => {
         res.status(500).json({ error: 'Internal server error.' });
     }
 });
+
+
 
 
 // Route to create a new note
