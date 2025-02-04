@@ -1,0 +1,8 @@
+# Node modules directory
+/node_modules
+
+/.history
+
+# Environment variable files
+.env
+.vercel
