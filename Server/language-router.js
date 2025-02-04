@@ -1,10 +1,12 @@
 // This module is cached as it has already been loaded
 const express = require('express');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
 const path = require('path');
 const app = express();
 let router = express.Router();
 let {Language} = require("./languageModel");
+let {User} = require("./userSchema");
 const { ObjectId } = require('mongodb');
 const { default: mongoose } = require('mongoose');
 
@@ -23,6 +25,34 @@ function validateObjectId(req, res, next) {
     }
     next();
 }
+
+// Middleware to verify the access token
+const verifyAccessToken = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Unauthorized - No token provided' });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+        // Verify the token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Check if user email exists in the database
+        const user = await User.findOne({ email: decoded.email }); // Assuming token contains the email
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        req.user = decoded; // Attach decoded user info to the request
+        next();
+    } catch (err) {
+        console.error("Token verification error:", err);
+        return res.status(403).json({ message: 'Forbidden - Invalid token' });
+    }
+};
 
 // Middleware to validate note body
 function checkNoteBody(req, res, next) {
@@ -49,7 +79,7 @@ function checkNoteBody(req, res, next) {
 // });
 
 // Route to get all language names and their IDs
-router.get("/", async (req, res) => {
+router.get("/", verifyAccessToken,async (req, res) => {
     try {
         // Use projection to fetch only the 'name' and '_id' fields
         const languages = await Language.find({}, { name: 1 });
@@ -62,9 +92,12 @@ router.get("/", async (req, res) => {
 //get the list of notes for a language
 // Route to get notes for a specific language
 // ex: http://localhost:8000/languages/getNotes, body {language_id: "6539adb333c191969ffb9b40"}
-router.get("/getNotes", validateObjectId, async (req, res) => {
+router.get("/getNotes", verifyAccessToken, async (req, res) => {
     try {
         const { language_id } = req.body;
+        if (!language_id || !mongoose.Types.ObjectId.isValid(language_id)) {
+            return res.status(400).json({ error: 'Invalid language_id' });
+        }
         const language = await Language.findById(language_id);
         if (!language) {
             return res.status(404).json({ error: 'Language not found' });
@@ -77,7 +110,7 @@ router.get("/getNotes", validateObjectId, async (req, res) => {
 // Route to get a specific language by ID
 // ex: http://localhost:8000/languages/getLanguage, body {language_id: "6539adb333c191969ffb9b40"}
 // Endpoint to search language details by ID or name
-router.get("/details", async (req, res) => {
+router.get("/details",verifyAccessToken, async (req, res) => {
     try {
       const { language_id, name } = req.query; // Extract language_id and name from query parameters
   
@@ -134,7 +167,7 @@ router.get("/details", async (req, res) => {
 //         res.status(500).json({ error: error.message });
 //     }
 // });
-router.post("/addNewCourse", async (req, res) => {
+router.post("/addNewCourse",verifyAccessToken,  async (req, res) => {
     const { name: title } = req.body; // Extract title from the request body
 
     if (!title) {
@@ -165,11 +198,14 @@ router.post("/addNewCourse", async (req, res) => {
 
 // Route to get a specific note by its _id
 // ex: http://localhost:8000/languages/:language_id/getNote/:note_id
-router.get("/getNote/:note_id", validateObjectId, async (req, res) => {
+router.get("/getNote/:note_id", verifyAccessToken, async (req, res) => {
     const { note_id } = req.params;
     const { language_id } = req.body;
 
     try {
+        if (!language_id || !mongoose.Types.ObjectId.isValid(language_id)) {
+            return res.status(400).json({ error: 'Invalid language_id' });
+        }
         const language = await Language.findById(language_id);
         if (!language) {
             return res.status(404).json({ error: 'Language not found' });
@@ -185,7 +221,7 @@ router.get("/getNote/:note_id", validateObjectId, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-router.get('/note', async (req, res) => {
+router.get('/note',verifyAccessToken,  async (req, res) => {
     try {
         const { language_id, note_id } = req.query;
 
@@ -209,7 +245,7 @@ router.get('/note', async (req, res) => {
         res.status(500).json({ error: 'Internal server error.' });
     }
 });
-router.get('/note/by-name', async (req, res) => {
+router.get('/note/by-name',verifyAccessToken,  async (req, res) => {
     try {
         const { name, note_id } = req.query;
 
@@ -261,9 +297,12 @@ router.get('/note/by-name', async (req, res) => {
 // }
 // Headers:
 // content-type: application/json
-router.post("/notes/newNote", validateObjectId, async (req, res) => {
+router.post("/notes/newNote", verifyAccessToken, async (req, res) => {
     const { language_id, title, description, note_detail } = req.body;
 
+    if (!language_id || !mongoose.Types.ObjectId.isValid(language_id)) {
+        return res.status(400).json({ error: 'Invalid language_id' });
+    }
     // Validate required fields
     if (!language_id || !title || !description || !note_detail || !Array.isArray(note_detail)) {
         return res.status(400).json({ error: 'Missing or invalid required fields in the body' });
@@ -316,7 +355,7 @@ router.post("/notes/newNote", validateObjectId, async (req, res) => {
 // Headers:
 // content-type: application/json
 // Route to update a note
-router.put("/notes/updateNote", validateObjectId, async (req, res) => {
+router.put("/notes/updateNote", verifyAccessToken, async (req, res) => {
     const { language_id, title, description, note_detail, note_id } = req.body;
 
     // Ensure required fields are provided
@@ -366,7 +405,7 @@ router.put("/notes/updateNote", validateObjectId, async (req, res) => {
 // Headers:
 // content-type: application/json
 // Route to delete a language
-router.delete("/deleteLanguage", validateObjectId, async (req, res) => {
+router.delete("/deleteLanguage", verifyAccessToken, async (req, res) => {
     const { language_id } = req.body;
 
     if (!language_id) {
@@ -395,7 +434,7 @@ router.delete("/deleteLanguage", validateObjectId, async (req, res) => {
 // Headers:
 // content-type: application/json
 // Route to delete a specific note by ID
-router.delete("/deleteNote", validateObjectId, async (req, res) => {
+router.delete("/deleteNote", verifyAccessToken, async (req, res) => {
     const { language_id, note_id } = req.body;
 
     if (!language_id || !note_id) {
