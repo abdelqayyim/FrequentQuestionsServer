@@ -29,6 +29,10 @@ let languageSchema = new Schema({
           ],
           default: [],
         },
+        createdBy: {
+          id: {type: mongoose.Schema.Types.ObjectId, ref: 'User', default:null },
+          firstName: {type: String}
+        },
         last_edited: { type: Date, default: Date.now },
         },
         

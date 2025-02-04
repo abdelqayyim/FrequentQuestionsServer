@@ -46,7 +46,7 @@ const verifyAccessToken = async (req, res, next) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        req.user = decoded; // Attach decoded user info to the request
+        req.user = user; // Attach decoded user info to the request
         next();
     } catch (err) {
         console.error("Token verification error:", err);
@@ -68,22 +68,17 @@ function checkNoteBody(req, res, next) {
 }
 
 //ex: http://localhost:8000/languages/
-// Route to get all languages
-// router.get("/", async (req, res) => {
-//     try {
-//         const languages = await Language.find({});
-//         res.status(200).json(languages);
-//     } catch (error) {
-//         res.status(500).json({ error: error.message });
-//     }
-// });
-
 // Route to get all language names and their IDs
-router.get("/", verifyAccessToken,async (req, res) => {
+router.get("/", verifyAccessToken, async (req, res) => {
     try {
-        // Use projection to fetch only the 'name' and '_id' fields
-        const languages = await Language.find({}, { name: 1 });
-        res.status(200).json(languages);
+        console.log("USER:", req.user);
+        // Fetch all languages where the user has created notes
+        const languages = await Language.find(
+            { "createdBy": req.user._id }, // Filter languages with notes created by the user
+            { name: 1, _id: 1 } // Only return the 'name' and '_id' fields
+        );
+        console.log("LANGUAGES:", languages);
+        res.status(200).json(languages); // Return the user's languages
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -167,7 +162,7 @@ router.get("/details",verifyAccessToken, async (req, res) => {
 //         res.status(500).json({ error: error.message });
 //     }
 // });
-router.post("/addNewCourse",verifyAccessToken,  async (req, res) => {
+router.post("/addNewCourse", verifyAccessToken, async (req, res) => {
     const { name: title } = req.body; // Extract title from the request body
 
     if (!title) {
@@ -181,13 +176,27 @@ router.post("/addNewCourse",verifyAccessToken,  async (req, res) => {
             return res.status(400).json({ error: `Course '${title}' already exists.` });
         }
 
+        // Get the current user from the request
+        const userEmail = req.user.email;
+
+        // Find the user by email
+        const user = await User.findOne({ email: userEmail });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
         // Create the new course object
         const courseData = {
             name: title,
+            createdBy: user._id,  // Store the user's _id (not email) in createdBy
         };
 
         // Create a new course in the database
         const course = await Language.create(courseData);
+
+        // Update the user's `languages` field with the new course
+        user.languages.push(course._id);
+        await user.save();  // Save the user with the updated languages field
 
         // Return the created course document
         res.status(201).json(course);
@@ -195,6 +204,7 @@ router.post("/addNewCourse",verifyAccessToken,  async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 
 // Route to get a specific note by its _id
 // ex: http://localhost:8000/languages/:language_id/getNote/:note_id
@@ -284,9 +294,6 @@ router.get('/note/by-name',verifyAccessToken,  async (req, res) => {
     }
 });
 
-
-
-
 // Route to create a new note
 // ex: http://localhost:8000/languages/newNote
 // body:
@@ -329,6 +336,10 @@ router.post("/notes/newNote", verifyAccessToken, async (req, res) => {
                 language: detail.language || null, // Set to null if not provided
                 content: detail.content,
             })),
+            createdBy: {
+                id: req.user._id, // User's ID from the request
+                firstName: req.user.firstName, // Assuming the user object has firstName
+            },
             last_edited: new Date() // Set to current date
         };
 
@@ -413,12 +424,26 @@ router.delete("/deleteLanguage", verifyAccessToken, async (req, res) => {
     }
 
     try {
+        // Step 1: Delete the language from the Language collection
         const result = await Language.deleteOne({ _id: language_id });
         if (result.deletedCount === 0) {
             return res.status(404).json({ error: 'Language not found' });
         }
 
-        res.status(200).json({ message: 'Successfully deleted language' });
+        // Step 2: Remove the language_id from the user's list of languages
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Remove the language_id from the user's languages array
+        const languageIndex = user.languages.indexOf(language_id);
+        if (languageIndex > -1) {
+            user.languages.splice(languageIndex, 1);
+            await user.save(); // Save the updated user document
+        }
+
+        res.status(200).json({ message: 'Successfully deleted language and updated user\'s languages' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
