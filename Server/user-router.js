@@ -202,12 +202,12 @@ router.post('/refresh-token', async (req, res) => {
   
       // If the refresh token is valid, issue a new access token (and optionally a new refresh token)
       const newAccessToken = generateAccessToken(user);
-      const newRefreshToken = generateRefreshToken(user); // Optionally, issue a new refresh token
+      // const newRefreshToken = generateRefreshToken(user); // Optionally, issue a new refresh token
   
       // Send the new tokens back to the client
       res.json({
         accessToken: newAccessToken,
-        refreshToken: newRefreshToken, // Optional
+        // refreshToken: newRefreshToken, // Optional
       });
   
     } catch (error) {
