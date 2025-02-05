@@ -69,17 +69,49 @@ function checkNoteBody(req, res, next) {
 
 //ex: http://localhost:8000/languages/
 // Route to get all language names and their IDs
+// router.get("/", verifyAccessToken, async (req, res) => {
+//     try {
+//         console.log("USER:", req.user);
+//         // Fetch all languages where the user has created notes
+//         const languages = await Language.find(
+//             { "createdBy": req.user._id }, // Filter languages with notes created by the user
+//             { name: 1, _id: 1, createdBy: 1 } // Only return the 'name' and '_id' fields
+//         );
+//         console.log("LANGUAGES:", languages);
+//         res.status(200).json(languages); // Return the user's languages
+//     } catch (error) {
+//         res.status(500).json({ error: error.message });
+//     }
+// });
 router.get("/", verifyAccessToken, async (req, res) => {
     try {
         console.log("USER:", req.user);
+
         // Fetch all languages where the user has created notes
         const languages = await Language.find(
-            { "createdBy": req.user._id }, // Filter languages with notes created by the user
-            { name: 1, _id: 1 } // Only return the 'name' and '_id' fields
-        );
-        console.log("LANGUAGES:", languages);
-        res.status(200).json(languages); // Return the user's languages
+            { createdBy: req.user._id }, // Filter languages created by the user
+            { name: 1, _id: 1, createdBy: 1, createdAt: 1, notes: 1 } // Select necessary fields
+        ).populate("createdBy", "firstName lastName email"); // Populate createdBy with user details
+
+        // Transform the response to include lastEdited field
+        const formattedLanguages = languages.map(language => ({
+            name: language.name,
+            _id: language._id,
+            createdBy: {
+                firstName: language.createdBy.firstName,
+                lastName: language.createdBy.lastName,
+                email: language.createdBy.email
+            },
+            lastEdited: language.notes.length > 0
+                ? new Date(Math.max(...language.notes.map(note => new Date(note.last_edited).getTime())))
+                : language.createdAt // If no notes, use createdAt as lastEdited
+        }));
+
+        console.log("FORMATTED LANGUAGES:", formattedLanguages);
+
+        res.status(200).json(formattedLanguages);
     } catch (error) {
+        console.error("Error fetching languages:", error);
         res.status(500).json({ error: error.message });
     }
 });
