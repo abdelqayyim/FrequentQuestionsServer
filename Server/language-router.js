@@ -54,19 +54,6 @@ const verifyAccessToken = async (req, res, next) => {
     }
 };
 
-// Middleware to validate note body
-function checkNoteBody(req, res, next) {
-    const permittedKeys = ["title", "description", "noteDetail", "_id"];
-    const passedKeys = Object.keys(req.body);
-
-    const missingKeys = permittedKeys.filter(key => !passedKeys.includes(key));
-    if (missingKeys.length) {
-        return res.status(400).json({ error: `Missing fields: ${missingKeys.join(', ')}` });
-    }
-
-    next();
-}
-
 //ex: http://localhost:8000/languages/
 // Route to get all language names and their IDs
 // router.get("/", verifyAccessToken, async (req, res) => {
@@ -85,8 +72,6 @@ function checkNoteBody(req, res, next) {
 // });
 router.get("/", verifyAccessToken, async (req, res) => {
     try {
-        console.log("USER:", req.user);
-
         // Fetch all languages where the user has created notes
         const languages = await Language.find(
             { createdBy: req.user._id }, // Filter languages created by the user
@@ -129,6 +114,12 @@ router.get("/getNotes", verifyAccessToken, async (req, res) => {
         if (!language) {
             return res.status(404).json({ error: 'Language not found' });
         }
+
+        // Check if the language belongs to the logged-in user
+        if (language.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'You do not have access to these notes.' });
+        }
+
         res.status(200).json(language.notes);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -156,6 +147,11 @@ router.get("/details",verifyAccessToken, async (req, res) => {
       if (!language) {
         return res.status(404).json({ error: "Language not found" });
       }
+
+        // Check if the language belongs to the logged-in user
+        if (language.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'You do not have access to this language.' });
+        }
   
       res.status(200).json(language);
     } catch (error) {
@@ -305,6 +301,10 @@ router.get('/note/by-name',verifyAccessToken,  async (req, res) => {
 
         if (!language) {
             return res.status(404).json({ error: 'Language not found.' });
+        }
+        // Check if the language belongs to the logged-in user
+        if (language.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'You do not have access to this language.' });
         }
 
         const note = language.notes.id(note_id);

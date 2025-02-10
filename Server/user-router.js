@@ -186,7 +186,7 @@ router.post('/refresh-token', async (req, res) => {
     }
   
     try {
-      // Verify the refresh token (you can add more checks here if necessary)
+      // Verify the refresh token
       const decoded = jwt.verify(refreshToken, JWT_SECRET); // This will decode the token and validate it
       
       // Check if the refresh token is expired
