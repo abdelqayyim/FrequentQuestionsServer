@@ -1,11 +1,11 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-const { Language } = require("./languageModel"); // Import the Language model
+// const { Language } = require("./languageModel"); // Import the Language model
 
 const userSchema = new mongoose.Schema({
-    firstName: { type: String, required: true, unique: true },
-    lastName: { type: String, required: true, unique: true },
-    username: { type: String, required: true, unique: true },
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    username: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String },  // Only for traditional username/password logins
     userId: { type: String, unique: true }, // Google ID or custom user ID

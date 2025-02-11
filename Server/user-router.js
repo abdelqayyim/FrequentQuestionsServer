@@ -22,10 +22,10 @@ router.post('/register', async (req, res) => {
     }
 
     // Hash the password before saving it to the database
-      let hashedPassword;
-      if (password) {
-        hashedPassword = await bcrypt.hash(password, 10); // 10 rounds of hashing
-      }
+    //   let hashedPassword;
+    //   if (password) {
+    //     hashedPassword = await bcrypt.hash(password.trim(), 10); // 10 rounds of hashing
+    //   }
       
        // Generate a new userId if not passed or if invalid
     let newID = userId ? userId : 'custom-id-' + Math.random().toString(36).substring(2, 15);
@@ -43,7 +43,8 @@ router.post('/register', async (req, res) => {
         lastName,
         username,
         email,
-        ...(hashedPassword != null && { password: hashedPassword }), // Store the hashed password
+        // ...(hashedPassword != null && { password: hashedPassword }), // Store the hashed password
+        password,
         userId: newID, // Generate a random userId (for testing)
         profilePicture
     });
@@ -120,36 +121,32 @@ router.post('/checkUser', async (req, res) => {
     }
 });
 
-  
 // Secret key for JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret'; // Make sure to use a real secret key
 
-
 // Route to sign in with username and password
 router.post('/login/username-password', async (req, res) => {
-
-    // "email": "testghging@gmail.com",
-    // "password": "testingpassword"
     const { username, password } = req.body;
-  
+
     // Basic validation
     if (!username || !password) {
       return res.status(400).json({ message: 'username and password are required.' });
     }
-  
+
     try {
       // Check if the user exists
       const user = await User.findOne({ username });
       if (!user) {
-        return res.status(404).json({ message: 'User not found.' });
+        return res.status(404).json({ message: 'User with that username does not exist.' });
       }
-  
+
       // Compare the entered password with the stored hashed password
-      const isMatch = bcrypt.compare(password.trim(), user.password);
+        let trimmedPassword = password.trim();
+      const isMatch = await bcrypt.compare(trimmedPassword, user.password);
       if (!isMatch) {
-        return res.status(401).json({ message: 'Invalid credentials. Please check your email and password.'});
+        return res.status(401).json({ message: 'Invalid password. Try again.'});
       }
-  
+
         // Generate a JWT token (you can store this token client-side)
         // Generate access and refresh tokens
         const accessToken = generateAccessToken(user);

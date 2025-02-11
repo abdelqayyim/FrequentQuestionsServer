@@ -92,8 +92,6 @@ router.get("/", verifyAccessToken, async (req, res) => {
                 : language.createdAt // If no notes, use createdAt as lastEdited
         }));
 
-        console.log("FORMATTED LANGUAGES:", formattedLanguages);
-
         res.status(200).json(formattedLanguages);
     } catch (error) {
         console.error("Error fetching languages:", error);

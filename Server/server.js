@@ -7,7 +7,7 @@ const app = express();
 var bodyParser = require('body-parser');
 var cors = require('cors');
 const config = require('./config.js');
-// const { Language } = require("./languageModel.js"); 
+const { Language } = require("./languageModel.js");
 const { User } = require("./userSchema.js");
 
 const PORT = process.env.PORT || 3000;
