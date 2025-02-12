@@ -22,7 +22,7 @@ router.post('/register', async (req, res) => {
     }
 
     // Hash the password before saving it to the database
-    //   let hashedPassword = await bcrypt.hash(password.trim(), 10);
+      let hashedPassword = await bcrypt.hash(password.trim(), 10);
 
        // Generate a new userId if not passed or if invalid
     let newID = userId ? userId : 'custom-id-' + Math.random().toString(36).substring(2, 15);
@@ -40,20 +40,14 @@ router.post('/register', async (req, res) => {
         lastName,
         username,
         email,
-        // ...(hashedPassword != null && { password: hashedPassword }), // Store the hashed password
-        password,
+        hashedPassword, // Store the hashed password
+        // password,
         userId: newID, // Generate a random userId (for testing)
         profilePicture
     });
 
     // Save the new user to the database
     await newUser.save();
-
-      // Hash the password after saving
-      const hashedPassword = await bcrypt.hash(password.trim(), 10);
-
-      // Update the user's password with the hashed version
-      await newUser.updateOne({ $set: { password: hashedPassword } });
       
     // Generate tokens (access and optionally refresh token)
     const accessToken = generateAccessToken(newUser);
@@ -145,8 +139,8 @@ router.post('/login/username-password', async (req, res) => {
 
       // Compare the entered password with the stored hashed password
         let trimmedPassword = password.trim();
-      console.log("user.passwprd", user.password);
-      console.log("trimmedPassword", trimmedPassword);
+        const hashedPassword = await bcrypt.hash(password.trim(), 10);
+        console.log("NEW PASSWORD", hashedPassword);
       const isMatch = await bcrypt.compare(trimmedPassword, user.password);
       if (!isMatch) {
           console.log("PASSWORD DOES NOT MATCH");
@@ -157,6 +151,8 @@ router.post('/login/username-password', async (req, res) => {
         // Generate access and refresh tokens
         const accessToken = generateAccessToken(user);
         const refreshToken = generateRefreshToken(user);
+
+
 
         res.json({
             user: {
