@@ -12,8 +12,6 @@ const jwtConfig = {
 const username = process.env.DB_USERNAME;
 const password = process.env.DB_PASSWORD;
 const dbname = process.env.DB_NAME;
-console.log("username", username);
-console.log("password", password);
 
 const connectionURL = `mongodb+srv://${username}:${password}@cluster0.sk7tl.mongodb.net/${dbname}?retryWrites=true&w=majority`;
 

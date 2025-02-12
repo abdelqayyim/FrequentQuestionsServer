@@ -99,6 +99,44 @@ router.get("/", verifyAccessToken, async (req, res) => {
     }
 });
 
+router.get("/all", verifyAccessToken, async (req, res) => {
+    try {
+        // Check if the user is an admin
+        if (!req.user.isAdmin) {
+            return res.status(403).json({ error: "Access denied. Admins only." });
+        }
+
+        // Fetch all languages
+        const languages = await Language.find({}, {
+            name: 1, _id: 1, createdBy: 1, createdAt: 1, notes: 1
+        }).populate("createdBy", "firstName lastName email");
+
+        // Transform the response to include lastEdited field
+        const formattedLanguages = languages.map(language => ({
+            name: language.name,
+            _id: language._id,
+            createdBy: language.createdBy
+                ? {
+                    firstName: language.createdBy.firstName,
+                    lastName: language.createdBy.lastName,
+                    email: language.createdBy.email
+                }
+                : null, // Return null if createdBy is missing
+
+            lastEdited: language.notes.length > 0
+                ? new Date(Math.max(...language.notes.map(note => new Date(note.last_edited).getTime())))
+                : language.createdAt // If no notes, use createdAt as lastEdited
+        }));
+
+        res.status(200).json(formattedLanguages);
+    } catch (error) {
+        console.error("Error fetching all languages:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+
 //get the list of notes for a language
 // Route to get notes for a specific language
 // ex: http://localhost:8000/languages/getNotes, body {language_id: "6539adb333c191969ffb9b40"}
@@ -114,7 +152,7 @@ router.get("/getNotes", verifyAccessToken, async (req, res) => {
         }
 
         // Check if the language belongs to the logged-in user
-        if (language.createdBy.toString() !== req.user._id.toString()) {
+        if (language.createdBy.toString() !== req.user._id.toString() && !req.user.isAdmin) {
             return res.status(403).json({ error: 'You do not have access to these notes.' });
         }
 
@@ -147,7 +185,7 @@ router.get("/details",verifyAccessToken, async (req, res) => {
       }
 
         // Check if the language belongs to the logged-in user
-        if (language.createdBy.toString() !== req.user._id.toString()) {
+        if (language.createdBy.toString() !== req.user._id.toString() && !req.user.isAdmin) {
             return res.status(403).json({ error: 'You do not have access to this language.' });
         }
   
@@ -301,7 +339,7 @@ router.get('/note/by-name',verifyAccessToken,  async (req, res) => {
             return res.status(404).json({ error: 'Language not found.' });
         }
         // Check if the language belongs to the logged-in user
-        if (language.createdBy.toString() !== req.user._id.toString()) {
+        if (language.createdBy.toString() !== req.user._id.toString() && !req.user.isAdmin) {
             return res.status(403).json({ error: 'You do not have access to this language.' });
         }
 
@@ -502,7 +540,7 @@ router.delete("/deleteNote", verifyAccessToken, async (req, res) => {
             return res.status(404).json({ error: 'Language not found' });
         }
 
-        const noteIndex = language.notes.findIndex(note => note._id.toString() === note_id);
+        const noteIndex = language.notes.findIndex(note => note?._id?.toString() === note_id);
         if (noteIndex === -1) {
             return res.status(404).json({ error: 'Note not found' });
         }

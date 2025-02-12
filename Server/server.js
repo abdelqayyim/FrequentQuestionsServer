@@ -1,4 +1,4 @@
-require('dotenv').config();  // Load environment variables from .env file
+require('dotenv').config({ path: __dirname + '/.env' });  // Load environment variables from .env file
 
 console.log("Server script is starting...");
 const mongoose = require('mongoose');
