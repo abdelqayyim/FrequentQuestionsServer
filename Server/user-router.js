@@ -22,7 +22,10 @@ router.post('/register', async (req, res) => {
     }
 
     // Hash the password before saving it to the database
-      let hashedPassword = await bcrypt.hash(password.trim(), 10);
+      let hashedPassword;
+    if(password){
+        hashedPassword =await bcrypt.hash(password.trim(), 10);
+    }
 
        // Generate a new userId if not passed or if invalid
     let newID = userId ? userId : 'custom-id-' + Math.random().toString(36).substring(2, 15);
@@ -40,7 +43,7 @@ router.post('/register', async (req, res) => {
         lastName,
         username,
         email,
-        hashedPassword, // Store the hashed password
+        ...(hashedPassword != null && { password: hashedPassword }), // Store the hashed password
         // password,
         userId: newID, // Generate a random userId (for testing)
         profilePicture
